@@ -1,0 +1,20 @@
+Package: JuiceBox
+Type: Package
+Title: Caret Extensions
+Version: 1.0.0
+Author: Shreyas Joshi
+Maintainer: Shreyas Joshi <sjoshi@princeton.edu>
+Description: Flexible package for performing cross validation and grid search optimization for custom user-defined data manipulation pipelines.
+Depends:
+    R (>= 3.2.4),
+    caret (>= 0.2),
+    doParallel (>= 1.0.10),
+    foreach (>= 0.3),
+    stats (>= 3.2.4)
+Suggests:
+    Metrics (>= 0.1.1),
+    xgboost (>= 0.4)
+License: GPL (>= 2)
+LazyData: TRUE
+RoxygenNote: 5.0.1
+

@@ -337,6 +337,105 @@ extractJuice <- function(X_train, Y_train, numFolds, parCV, numCores, seedNum, v
   }
 }
 
+#' extractGenericJuice
+#'
+#' Returns cross validation data from folds (i.e. if 2 folds, then aggregate the data on
+#' fold 2 after training only on fold 1 & the data on fold 1 after training only on fold 2). This
+#' is helps in feature engineering.
+#'
+#' @import caret
+#' @import doParallel
+#' @import foreach
+#' @param X_train Training Data (excludes the response/target we wish to predict
+#' ) that will be fed into the pipeline function.
+#' @param Y_train Training Response/Target - The response/target that will be fed into the pipeline function.
+#' @param numFolds Integer indicating the number of folds to use to extract data
+#' @param parCV Boolean indicating whether to parallelize the extraction prodcedure.
+#' @param numCores Integer indicating the number of cores to use when generating predictions.
+#' @param seedNum Integer indicating the seed number. Using the same seed will generate the same folds.
+#' @param verbose_p Boolean indicating if prediction extraction details should be printed out the screen.
+#' @param fn The pipeline function. The pipeline function must take parameters training data, training response,
+#' validation data, validation response. See examples for details.
+#' @param fn_params Additional parameters to supply to the pipeline function. See examples for details.
+#' @return CV Fold Predictions
+#' @export
+extractGenericJuice <- function(X_train, Y_train, numFolds, parCV, numCores, seedNum, verbose_p, fn, fn_params)
+{
+  set.seed(seedNum)
+  CVGrid <- expand.grid(c(1:numFolds), c(1:1))
+  folds_list = createMultiFolds(Y_train, k = numFolds, times = 1)
+  origRowOrder <- c(1:nrow(X_train))
+
+  if(parCV == TRUE)
+  {
+    registerDoParallel(cores=numCores)
+    all_cv_data <- foreach(i=1:nrow(CVGrid)) %dopar%
+    {
+      if(verbose_p == TRUE)
+      {
+        print(paste0("Calculating data from fold ", CVGrid[i,1]))
+      }
+
+      cv_data <- fn(X_train[folds_list[[i]],],
+                  Y_train[folds_list[[i]]],
+                  X_train[-folds_list[[i]],],
+                  Y_train[-folds_list[[i]]],
+                  fn_params)
+
+      if(verbose_p == TRUE)
+      {
+        print(paste0("Finished getting data from fold ", CVGrid[i,1]))
+      }
+      cv_data
+    }
+    allPredIDs <- foreach(i=1:nrow(CVGrid)) %dopar%
+    {
+      predID <- origRowOrder[-folds_list[[i]]]
+    }
+    all_cv_data <- do.call(rbind.data.frame, all_cv_data)
+    allPredIDs <- unlist(allPredIDs)
+    tempDf <- data.frame(cbind(allPredIDs, all_cv_data))
+    tempDf <- tempDf[order(allPredIDs),]
+    tempDf$allPredIDs <- NULL
+    return(tempDf)
+  } else {
+    allPreds <- c()
+    allPredIDs <- c()
+    all_cv_data <- foreach(i=1:nrow(CVGrid)) %do%
+    {
+      if(verbose_p == TRUE)
+      {
+        print(paste0("Calculating data from fold ", CVGrid[i,1]))
+      }
+
+      cv_data <- fn(X_train[folds_list[[i]],],
+                    Y_train[folds_list[[i]]],
+                    X_train[-folds_list[[i]],],
+                    Y_train[-folds_list[[i]]],
+                    fn_params)
+
+      if(verbose_p == TRUE)
+      {
+        print(paste0("Finished getting data from fold ", CVGrid[i,1]))
+      }
+      cv_data
+    }
+    allPredIDs <- foreach(i=1:nrow(CVGrid)) %dopar%
+    {
+      predID <- origRowOrder[-folds_list[[i]]]
+    }
+    all_cv_data <- do.call(rbind.data.frame, all_cv_data)
+
+    allPredIDs <- unlist(allPredIDs)
+    tempDf <- data.frame(cbind(allPredIDs, all_cv_data))
+    tempDf <- tempDf[order(allPredIDs),]
+    tempDf$allPredIDs <- NULL
+    return(tempDf)
+  }
+}
+
+
+
 #' JuiceBoxCV_GridSearch
 #'
 #' Use grid search in conjunction with cross validation to find optimal parameters for your pipline.

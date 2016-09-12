@@ -2,6 +2,7 @@
 
 export(JuiceBoxCV)
 export(JuiceBoxCV_GridSearch)
+export(extractGenericJuice)
 export(extractJuice)
 import(caret)
 import(doParallel)
